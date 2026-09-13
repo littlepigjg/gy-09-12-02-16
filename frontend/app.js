@@ -30,6 +30,7 @@ const app = createApp({
       communityInfo: null,
       communityColors: {},
       hasGraph: false,
+      nodeDetail: null,
     };
   },
 
@@ -47,6 +48,14 @@ const app = createApp({
       },
       minZoom: 0.1,
       maxZoom: 4,
+    });
+
+    // 点击节点：弹出详情面板并高亮其直接关系；点击空白：取消选中
+    this.cy.on("tap", "node", (evt) => {
+      this.selectNode(evt.target.id());
+    });
+    this.cy.on("tap", (evt) => {
+      if (evt.target === this.cy) this.deselectNode();
     });
   },
 
@@ -91,6 +100,18 @@ const app = createApp({
             height: 22,
             "z-index": 999,
             "font-size": 9,
+          },
+        },
+        {
+          selector: "node.selected",
+          style: {
+            "border-width": 4,
+            "border-color": "#4c8dff",
+            width: 28,
+            height: 28,
+            "z-index": 1000,
+            "font-size": 10,
+            "font-weight": "bold",
           },
         },
         {
@@ -209,7 +230,8 @@ const app = createApp({
     },
 
     highlightPath(path) {
-      this.cy.elements().removeClass("highlight dim");
+      this.nodeDetail = null;
+      this.cy.elements().removeClass("highlight dim selected");
       this.cy.elements().addClass("dim");
 
       const pathNodes = new Set(path);
@@ -263,10 +285,46 @@ const app = createApp({
       });
     },
 
+    // 选中节点：拉取详情并高亮该节点与其直接相连的关系
+    async selectNode(id) {
+      this.highlightNeighborhood(id);
+      // 防止快速连点时旧响应覆盖新选中
+      this._selectSeq = (this._selectSeq || 0) + 1;
+      const seq = this._selectSeq;
+      try {
+        const detail = await this.api(
+          `/api/node_detail?node=${encodeURIComponent(id)}`
+        );
+        if (seq === this._selectSeq) this.nodeDetail = detail;
+      } catch (e) {
+        if (seq === this._selectSeq) this.nodeDetail = null;
+      }
+    },
+
+    // 高亮节点自身 + 直接邻居 + 相连边，其余元素压暗
+    highlightNeighborhood(id) {
+      this.cy.elements().removeClass("highlight dim selected");
+      this.cy.elements().addClass("dim");
+
+      const node = this.cy.getElementById(id);
+      if (!node.length) return;
+
+      // closedNeighborhood 包含自身、相连边与相邻节点（孤立节点则只有自身）
+      node.closedNeighborhood().removeClass("dim").addClass("highlight");
+      node.removeClass("highlight").addClass("selected");
+    },
+
+    // 取消选中：关闭详情面板并清除选中高亮
+    deselectNode() {
+      this.nodeDetail = null;
+      this.cy.elements().removeClass("highlight dim selected");
+    },
+
     clearHighlight() {
-      this.cy.elements().removeClass("highlight dim");
+      this.cy.elements().removeClass("highlight dim selected");
       this.pathResult = "";
       this.commonResult = "";
+      this.nodeDetail = null;
     },
   },
 });

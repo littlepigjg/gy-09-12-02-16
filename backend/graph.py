@@ -10,6 +10,7 @@
 """
 
 from .storage import Storage
+from . import algorithms
 
 
 class Graph:
@@ -18,6 +19,7 @@ class Graph:
         self.adj = {}      # 邻接表缓存: node_id -> {neighbor: weight}
         self.nodes = {}    # node_id -> {"name", "attrs"}
         self._communities = None  # 社群划分缓存，导入后惰性计算
+        self._pagerank = None     # PageRank 缓存，导入后惰性计算
         self.rebuild()
 
     # ------------------------------------------------------------------ #
@@ -37,6 +39,7 @@ class Graph:
             self.adj[s][t] = w
             self.adj[t][s] = w
         self._communities = None
+        self._pagerank = None
 
     def import_data(self, nodes, edges):
         """导入数据并重建缓存。"""
@@ -64,6 +67,21 @@ class Graph:
 
     def node_ids(self):
         return list(self.adj.keys())
+
+    # ------------------------------------------------------------------ #
+    # 算法结果缓存（惰性计算，rebuild 后自动失效）
+    # ------------------------------------------------------------------ #
+    def communities(self):
+        """Louvain 社群划分结果（带缓存）。"""
+        if self._communities is None:
+            self._communities = algorithms.louvain(self)
+        return self._communities
+
+    def pagerank(self):
+        """PageRank 得分（带缓存）。"""
+        if self._pagerank is None:
+            self._pagerank = algorithms.pagerank(self)
+        return self._pagerank
 
     def to_frontend(self):
         """导出为前端渲染所需的结构。"""

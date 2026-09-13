@@ -100,6 +100,47 @@
       <main class="canvas-wrap">
         <div id="cy" ref="cyRef"></div>
         <div class="hint" v-if="!hasGraph">点击「加载样例网络」开始</div>
+
+        <div class="node-detail" v-if="nodeDetail">
+          <div class="nd-header">
+            <span class="nd-title">{{ nodeDetail.name }}</span>
+            <button class="nd-close" @click="deselectNode" title="关闭">×</button>
+          </div>
+          <div class="nd-grid">
+            <div class="nd-stat">
+              <span>关系数</span>
+              <b>{{ nodeDetail.degree }}</b>
+            </div>
+            <div class="nd-stat">
+              <span>所属社群</span>
+              <b>
+                <i class="nd-dot" :style="{ background: communityColors[nodeDetail.community] || '#8b96ab' }"></i>
+                社群 {{ nodeDetail.community }}（{{ nodeDetail.community_size }} 人）
+              </b>
+            </div>
+            <div class="nd-stat">
+              <span>影响力排名</span>
+              <b>#{{ nodeDetail.pagerank_rank }} / {{ nodeDetail.pagerank_total }}</b>
+            </div>
+            <div class="nd-stat">
+              <span>PageRank</span>
+              <b>{{ nodeDetail.pagerank_score }}</b>
+            </div>
+          </div>
+          <div class="nd-neighbors">
+            <div class="nd-neighbors-title">直接相连（{{ nodeDetail.degree }}）</div>
+            <div class="nd-neighbors-list" v-if="nodeDetail.neighbors.length">
+              <span
+                v-for="nb in nodeDetail.neighbors"
+                :key="nb"
+                class="nd-neighbor"
+                @click="selectNode(nb)"
+                >{{ nb }}</span
+              >
+            </div>
+            <div class="nd-isolated" v-else>孤立节点，没有直接相连的关系</div>
+          </div>
+        </div>
       </main>
     </div>
   </div>

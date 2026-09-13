@@ -118,7 +118,7 @@ def api_common_friends():
 @app.route("/api/pagerank", methods=["GET"])
 def api_pagerank():
     top_n = int(request.args.get("top_n", 10))
-    ranks = algorithms.pagerank(graph)
+    ranks = graph.pagerank()
     ranked = sorted(ranks.items(), key=lambda kv: kv[1], reverse=True)
     return jsonify(
         {
@@ -133,7 +133,7 @@ def api_pagerank():
 @app.route("/api/communities", methods=["GET"])
 def api_communities():
     """返回社群划分结果与每个节点所属社群。"""
-    community = algorithms.louvain(graph)
+    community = graph.communities()
     groups = algorithms.community_groups(community)
     return jsonify(
         {
@@ -151,6 +151,38 @@ def api_neighbors():
         return jsonify({"error": "需要 node 参数"}), 400
     nbs = graph.neighbors(node)
     return jsonify({"node": node, "neighbors": sorted(nbs.keys())})
+
+
+@app.route("/api/node_detail", methods=["GET"])
+def api_node_detail():
+    """单个节点的详情：度数、邻居、所属社群、PageRank 排名。"""
+    node = request.args.get("node")
+    if not node:
+        return jsonify({"error": "需要 node 参数"}), 400
+    if not graph.has_node(node):
+        return jsonify({"error": f"节点不存在: {node}"}), 404
+
+    community = graph.communities()
+    groups = algorithms.community_groups(community)
+    cid = community.get(node)
+
+    ranks = graph.pagerank()
+    ranked = sorted(ranks.items(), key=lambda kv: kv[1], reverse=True)
+    rank_of = {n: i + 1 for i, (n, _) in enumerate(ranked)}
+
+    return jsonify(
+        {
+            "id": node,
+            "name": graph.nodes.get(node, {}).get("name", node),
+            "degree": graph.degree(node),
+            "neighbors": sorted(graph.neighbors(node).keys()),
+            "community": cid,
+            "community_size": len(groups.get(cid, [])),
+            "pagerank_score": round(ranks.get(node, 0.0), 6),
+            "pagerank_rank": rank_of.get(node),
+            "pagerank_total": len(ranked),
+        }
+    )
 
 
 if __name__ == "__main__":
